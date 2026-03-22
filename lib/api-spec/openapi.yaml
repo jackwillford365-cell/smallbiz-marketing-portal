@@ -1,0 +1,793 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Smallbiz Marketing Portal API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: videos
+    description: Video content management
+  - name: shoots
+    description: Shoot scheduling
+  - name: approvals
+    description: Content approval workflow
+  - name: analytics
+    description: Performance analytics
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to the returnTo path on success or /api/login on failure.
+
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /videos:
+    get:
+      operationId: listVideos
+      tags: [videos]
+      summary: List all videos
+      responses:
+        "200":
+          description: List of videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+    post:
+      operationId: createVideo
+      tags: [videos]
+      summary: Create a new video
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVideoRequest"
+      responses:
+        "201":
+          description: Created video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+
+  /videos/{id}:
+    get:
+      operationId: getVideo
+      tags: [videos]
+      summary: Get a video by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Video details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+    put:
+      operationId: updateVideo
+      tags: [videos]
+      summary: Update a video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVideoRequest"
+      responses:
+        "200":
+          description: Updated video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+    delete:
+      operationId: deleteVideo
+      tags: [videos]
+      summary: Delete a video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /shoots:
+    get:
+      operationId: listShoots
+      tags: [shoots]
+      summary: List all shoots
+      responses:
+        "200":
+          description: List of shoots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shoot"
+    post:
+      operationId: createShoot
+      tags: [shoots]
+      summary: Create a shoot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShootRequest"
+      responses:
+        "201":
+          description: Created shoot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shoot"
+
+  /shoots/{id}:
+    put:
+      operationId: updateShoot
+      tags: [shoots]
+      summary: Update a shoot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShootRequest"
+      responses:
+        "200":
+          description: Updated shoot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shoot"
+    delete:
+      operationId: deleteShoot
+      tags: [shoots]
+      summary: Delete a shoot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /approvals:
+    get:
+      operationId: listApprovals
+      tags: [approvals]
+      summary: List all approval requests
+      responses:
+        "200":
+          description: List of approval requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Approval"
+    post:
+      operationId: createApproval
+      tags: [approvals]
+      summary: Submit a video for approval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApprovalRequest"
+      responses:
+        "201":
+          description: Created approval request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+
+  /approvals/{id}:
+    put:
+      operationId: updateApproval
+      tags: [approvals]
+      summary: Update approval status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApprovalRequest"
+      responses:
+        "200":
+          description: Updated approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+
+  /analytics:
+    get:
+      operationId: getAnalytics
+      tags: [analytics]
+      summary: Get performance analytics summary
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analytics"
+
+components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, in_production, review, approved, published]
+        scheduledDate:
+          type: string
+          nullable: true
+        publishedDate:
+          type: string
+          nullable: true
+        folderLink:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        tags:
+          type: string
+          nullable: true
+        views:
+          type: integer
+          nullable: true
+        likes:
+          type: integer
+          nullable: true
+        comments:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - title
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateVideoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, in_production, review, approved, published]
+        scheduledDate:
+          type: string
+          nullable: true
+        folderLink:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        tags:
+          type: string
+          nullable: true
+      required:
+        - title
+        - status
+
+    UpdateVideoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, in_production, review, approved, published]
+        scheduledDate:
+          type: string
+          nullable: true
+        publishedDate:
+          type: string
+          nullable: true
+        folderLink:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          nullable: true
+        tags:
+          type: string
+          nullable: true
+        views:
+          type: integer
+          nullable: true
+        likes:
+          type: integer
+          nullable: true
+        comments:
+          type: integer
+          nullable: true
+
+    Shoot:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        shootDate:
+          type: string
+        location:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        videoId:
+          type: integer
+          nullable: true
+        videoTitle:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - shootDate
+        - status
+        - createdAt
+
+    CreateShootRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        shootDate:
+          type: string
+        location:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        videoId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - title
+        - shootDate
+        - status
+
+    UpdateShootRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        shootDate:
+          type: string
+        location:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        videoId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    Approval:
+      type: object
+      properties:
+        id:
+          type: integer
+        videoId:
+          type: integer
+        videoTitle:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, revision_requested]
+        reviewerName:
+          type: string
+          nullable: true
+        comments:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+        reviewedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - videoId
+        - videoTitle
+        - status
+        - submittedAt
+
+    CreateApprovalRequest:
+      type: object
+      properties:
+        videoId:
+          type: integer
+        comments:
+          type: string
+          nullable: true
+      required:
+        - videoId
+
+    UpdateApprovalRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, rejected, revision_requested]
+        reviewerName:
+          type: string
+          nullable: true
+        comments:
+          type: string
+          nullable: true
+      required:
+        - status
+
+    Analytics:
+      type: object
+      properties:
+        totalVideos:
+          type: integer
+        publishedVideos:
+          type: integer
+        pendingApprovals:
+          type: integer
+        upcomingShoots:
+          type: integer
+        totalViews:
+          type: integer
+        totalLikes:
+          type: integer
+        totalComments:
+          type: integer
+        videosByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        viewsByMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyMetric"
+        recentVideos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Video"
+      required:
+        - totalVideos
+        - publishedVideos
+        - pendingApprovals
+        - upcomingShoots
+        - totalViews
+        - totalLikes
+        - totalComments
+        - videosByStatus
+        - viewsByMonth
+        - recentVideos
+
+    StatusCount:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+      required:
+        - status
+        - count
+
+    MonthlyMetric:
+      type: object
+      properties:
+        month:
+          type: string
+        views:
+          type: integer
+        likes:
+          type: integer
+      required:
+        - month
+        - views
+        - likes

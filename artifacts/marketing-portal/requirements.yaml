@@ -1,0 +1,21 @@
+packages:
+  "framer-motion": "For page transitions, smooth modal animations, and polished UI interactions"
+  "recharts": "For rendering performance analytics charts (bar charts, pie charts)"
+  "date-fns": "For calendar generation, date parsing, and formatting"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to merge tailwind classes without style conflicts"
+  "lucide-react": "For beautiful consistent SVG icons across the app"
+
+images:
+  - path: "artifacts/marketing-portal/public/images/logo.png"
+    description: "A minimal, modern geometric logo mark for a marketing portal, using vivid green (#22c55e) on a completely transparent background. Professional, bold, clean."
+    aspect_ratio: "1:1"
+  - path: "artifacts/marketing-portal/public/images/hero-abstract.png"
+    description: "Abstract 3D gradient mesh in deep black and very subtle dark green, elegant, cinematic, moody studio lighting."
+    aspect_ratio: "16:9"
+
+notes:
+  - Replaced the placeholder index.css with a fully custom dark mode theme featuring bright green accents.
+  - Used `@workspace/api-client-react` for all API calls as specified.
+  - Native HTML selects and inputs are styled with Tailwind to perfectly match the dark theme and avoid missing shadcn component dependencies.
+  - Implemented custom Framer Motion modals to ensure they work reliably without needing external context providers.
